@@ -18,15 +18,26 @@ test_data = path + 'test_census.csv'
 data = pd.read_csv(train_data)
 print(data.head(n=1))
 print(data.shape)
+# get the types of columns
+print(data.dtypes)
+# Pandas has a helpful select_dtypes function
+# which we can use to build a new dataframe containing only the object columns.
+obj_data = data.select_dtypes(include=['object']).copy()
+
+# Before going any further, we have to check if there are null values in the data that we need to clean up.
+print(obj_data[obj_data.isnull().any(axis=1)])
 
 # TODO: Total number of records
 n_records = data.shape[0]
 
 # TODO: Number of records where individual's income is more than $50,000
-n_greater_50k = data.loc[data['income'] == '>50K'].shape[0]
-
 # TODO: Number of records where individual's income is at most $50,000
-n_at_most_50k = data.loc[data['income'] == '<=50K'].shape[0]
+# Method1:
+n_at_most_50k, n_greater_50k = data.income.value_counts()
+
+# Method2: (optional) -->
+# n2_greater_50k = data[data['income']=='>50K'].shape[0]
+# n2_at_most_50k = data[data['income']=='<=50K'].shape[0]
 
 n_aux = data.loc[(data['capital-gain'] > 0) & (data['capital-loss'] > 0)].shape
 
@@ -55,7 +66,7 @@ features_log_transformed[skewed] = features_raw[skewed].apply(lambda x: np.log(x
 vs.distribution(features_log_transformed, transformed = True)
 
 # Import sklearn.preprocessing.StandardScaler
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
 # Initialize a scaler, then apply it to the features
 scaler = MinMaxScaler() # default=(0, 1)
@@ -71,7 +82,11 @@ print(features_log_minmax_transform.head(n = 5))
 features_final = pd.get_dummies(features_log_minmax_transform)
 
 # TODO: Encode the 'income_raw' data to numerical values
-income =income_raw.map({'<=50K':0, '>50K':1})
+# Method1:
+encoder = LabelEncoder()
+income = pd.Series(encoder.fit_transform(income_raw))
+# Method2:(optional) -->
+income1 =income_raw.map({'<=50K':0, '>50K':1})
 
 # Print the number of features after one-hot encoding
 encoded = list(features_final.columns)
@@ -176,8 +191,8 @@ from sklearn.svm import SVC
 # TODO: Initialize the three models
 clf_A = GaussianNB()
 #clf_B = DecisionTreeClassifier()
-clf_B = GradientBoostingClassifier()
-clf_C = SVC()
+clf_B = GradientBoostingClassifier(random_state=seed)
+clf_C = SVC(random_state=seed)
 #clf_E = AdaBoostClassifier()
 #model = AdaBoostClassifier(base_estimator = DecisionTreeClassifier(max_depth=2), n_estimators = 4)
 
@@ -232,7 +247,7 @@ best_clf = grid_fit.best_estimator_
 predictions = (clf.fit(X_train, y_train)).predict(X_test)
 best_predictions = best_clf.predict(X_test)
 
-# Report the before-and-afterscores
+# Report the before-and-after scores
 print("Unoptimized model\n------")
 print("clf", clf)
 print("Accuracy score on testing data: {:.4f}".format(accuracy_score(y_test, predictions)))
