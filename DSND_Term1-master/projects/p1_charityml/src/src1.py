@@ -1,3 +1,11 @@
+# install imblearn package to a specific anaconda enviroment boston_house_price
+# $ conda install -n boston_house_price -c conda-forge imbalanced-learn
+
+# update imblearn package to a specific anaconda enviroment boston_house_price
+# $ conda update -n boston_house_price -c glemaitre imbalanced-learn
+# =============================================================
+
+
 # Import libraries necessary for this project
 import numpy as np
 import pandas as pd
@@ -88,12 +96,57 @@ income = pd.Series(encoder.fit_transform(income_raw))
 # Method2:(optional) -->
 income1 =income_raw.map({'<=50K':0, '>50K':1})
 
+# Method3:(optional) -->
+income2 =pd.get_dummies(income_raw)['>50K']
+
 # Print the number of features after one-hot encoding
 encoded = list(features_final.columns)
 print("{} total features after one-hot encoding.".format(len(encoded)))
 
 # Uncomment the following line to see the encoded feature names
 print(encoded)
+
+#-----------------
+# @Raafat: Some techniques to deal imbalanced data:
+# --> under sampling
+from imblearn.under_sampling import CondensedNearestNeighbour
+cnn = CondensedNearestNeighbour(random_state=42)
+X_res, y_res = cnn.fit_sample(features_final[0:300], income[0:300])
+print('not Resampled dataset shape {}'.format(income[0:300].value_counts()))
+print('cnn Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+
+from imblearn.under_sampling import RandomUnderSampler
+rus = RandomUnderSampler(random_state=42)
+X_res, y_res = rus.fit_sample(features_final[0:300], income[0:300])
+print('rus Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+
+from imblearn.under_sampling import TomekLinks
+tl = TomekLinks(random_state=42)
+X_res, y_res = tl.fit_sample(features_final[0:300], income[0:300])
+print('tl Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+
+# --> over sampling
+from imblearn.over_sampling import SMOTE
+sm = SMOTE(random_state=42)
+X_res, y_res = sm.fit_sample(features_final[0:300], income[0:300])
+print('sm Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+
+from imblearn.over_sampling import RandomOverSampler
+ros = RandomOverSampler(random_state=42)
+X_res, y_res = ros.fit_sample(features_final[0:300], income[0:300])
+print('ros Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+
+# --> Combination of over- and under-sampling methods
+from imblearn.combine import SMOTEENN
+sme = SMOTEENN(random_state=42)
+X_res, y_res = sme.fit_sample(features_final[0:300], income[0:300])
+print('sme Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+
+from imblearn.combine import SMOTETomek
+smt = SMOTETomek(random_state=42)
+X_res, y_res = smt.fit_sample(features_final[0:300], income[0:300])
+print('smt Resampled dataset shape {}'.format(pd.Series(y_res).value_counts()))
+#------------------
 
 # Import train_test_split
 from sklearn.model_selection import train_test_split
@@ -228,14 +281,18 @@ clf = GradientBoostingClassifier(random_state= 42)
 
 # TODO: Create the parameters list you wish to tune, using a dictionary if needed.
 # HINT: parameters = {'parameter_1': [value1, value2], 'parameter_2': [value1, value2]}
-#parameters = {'min_samples_split':[2,5,7],'min_samples_leaf':[1,3,5], 'max_depth':[3,5,7]}
 parameters = {'max_depth':[2,4,6],'min_samples_leaf':[2,4,6], 'min_samples_split':[2,4,6]}
 
 # TODO: Make an fbeta_score scoring object using make_scorer()
 scorer = make_scorer(fbeta_score, beta=0.5)
 
+# You can use StratifiedShuffleSplit to ensure that training and validation sets
+# have approximately the same number of data points of each output class
+from sklearn.model_selection import StratifiedShuffleSplit
+sss = StratifiedShuffleSplit(n_splits=10, test_size=0.2)
+
 # TODO: Perform grid search on the classifier using 'scorer' as the scoring method using GridSearchCV()
-grid_obj = GridSearchCV(clf, parameters, scoring=scorer)
+grid_obj = GridSearchCV(clf, parameters, scoring=scorer,cv= sss)
 
 # TODO: Fit the grid search object to the training data and find the optimal parameters using fit()
 grid_fit = grid_obj.fit(X_train, y_train)
